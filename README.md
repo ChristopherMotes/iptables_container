@@ -1,8 +1,13 @@
 # Fun with linking and IPTables
-Least Requied Privledges shouldn't just apply to users, but instead to everything. Although this might be overkill for a realworld application, we're going to link some containers add micro-services to control permissions on a node. The first container is a beloved docker training app. The second is an iptables rules set. 
-Containers leverage namespaces. Networking has it's own namespace. So we can create iptables rules that only exist for that name space. Those rules won't cuase problems with other namespaces, or  the global namespace ( that may be a very Solaris Zones way of saying it). However, to futz with iptables rules in Docker, we need elevate permissions. In the most stringent applications of LRP, the application  container does't require the elavated, NET_ADMIN, priviledge. Moreover, with ECS it's either it either privledge mode or not priviledged mode for NET_ADMIN.  Thus, we want a separate serivce handling the inbound traffic.
-## NOTE: The IPTables conatiner is a long ways from 12Factor.
-The container in this state is a long ways from a 12 Facter App. The iptables rules need variablization (It's a word!!!). 
+Least Requied Privledges shouldn't just apply to users, but instead to everything. Although this might be overkill for a realworld application, we're going to link some containers add micro-services to ensure LRP on a containter. The first container/micro-service is a beloved docker training webapp. The second is an iptables rules set.
+
+This all started because my current employer loves IPTables and IPSec. Containers leverage namespaces. Networking has it's own namespace. So we can create iptables rules that only exist for that namespace. Those rules won't cuase problems with other namespaces, or  the global namespace (that may be a very Solaris Zones way of saying it). However, to futz with iptables rules in Docker, we need to elevate permissions. In the most stringent applications of LRP, the application  container does't require the elavated, NET_ADMIN, priviledge. Moreover, with ECS it's either privledge mode or not priviledged mode for NET_ADMIN.  Thus, we want a separate micro-serivce handling the IPTables traffic. So, our IPTables container has elevated priviledges, our webapp container doesn't. Indeed, in the final interation, our webapp container isn't even exposed to the network.
+
+### Why this might not be overkill
+Asking any attacker or network security person. Breaching an app is easy. Breaching the kernel is hard. If an attacker rides through the application's tcp socket, then he can stop in  the iptables container, or  move to the application's container. Stopping in the iptables container means the attacker must exploit the kernel to plant a flag in the container. If the attacker follows through to the application container, he's stuck with lesser permisions, in a containter not exposed to the  network.
+
+### NOTE: The IPTables conatiner is a long ways from 12Factor.
+The container in this state is a long ways from a 12 Facter App. The iptables rules need variablization (It's a word!!!). This is just POC.
 
 ## Create the bridge
 ```
@@ -20,6 +25,6 @@ cap-add and current linking mechanisms (--net customerA) are well documented. I'
 ```
 sudo docker run -d --net customerA --ip 172.18.0.23 --name app -t -i training/webapp app
 ```
-Here we start the app. This defined IP must match the output of the iptables script for DNAT. Also, note that the app doesn't listen outside of the container. 
+Here we start the app. This defined IP must match the output of the iptables script for DNAT. Also, note that the app doesn't listen outside of the container. When tuning the IPTables rules, restarting the app container is very useful.
 
 
